@@ -1,0 +1,155 @@
+/*
+ * ALMA - Atacama Large Millimiter Array (c) European Southern Observatory, 2010
+ * 
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ * 
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * 
+ */
+package alma.control.gui.antennamount.metrology;
+
+import java.awt.Component;
+
+import alma.control.gui.antennamount.AntennaRootPane;
+import alma.control.gui.antennamount.errortab.ErrorTabbedPane;
+import alma.control.gui.antennamount.errortab.TabTitleSetter;
+import alma.control.gui.antennamount.mount.Mount;
+import alma.control.gui.antennamount.utils.GUIConstants;
+import alma.control.gui.antennamount.utils.ValueState;
+
+import javax.swing.JTable;
+import javax.swing.table.AbstractTableModel;
+
+/**
+ * 
+ * The table with the detailed status of the antenna.
+ * It contains the common part between AEC and VA mount.
+ *
+ * @author acaproni
+ */
+public class MetrologyTable extends JTable {
+
+	/**
+	 * The model used when no mount is connected
+	 * 
+	 * @author acaproni
+	 *
+	 */
+	public class EmptyModel extends AbstractTableModel {
+		@Override
+		public int getColumnCount() {
+			return 0;
+		}
+
+		@Override
+		public int getRowCount() {
+			return 0;
+		}
+
+		@Override
+		public Object getValueAt(int rowIndex, int columnIndex) {
+			return null;
+		}
+		
+	}
+	
+	/**
+	 * The model of the table
+	 */
+	private CommonMetrologyModel model;
+	
+	/**
+	 * The root pane
+	 */
+	private AntennaRootPane rootPane;
+	
+	/**
+	 * Constructor
+	 *
+	 */
+	public MetrologyTable(AntennaRootPane rootPane) {
+		super();
+		if (rootPane==null) {
+			throw new IllegalArgumentException("The root pane can't be null");
+		}
+		this.rootPane=rootPane;
+		setBackground(GUIConstants.tableBackgroundColor);
+		setRowSelectionAllowed(false);
+        setColumnSelectionAllowed(false);
+        setCellSelectionEnabled(false);
+        setOpaque(false);
+        getTableHeader().setVisible(true);
+	}
+	
+	/**
+	 * Set the mount and the controller to read values from
+	 * 
+	 * @param mnt The mount (can be null)
+	 */
+	public void setComponents(Mount mnt) {
+		if (mnt!=null) {
+			switch (mnt.getMountType()) {
+			case VERTEX: case VERTEX_LLAMA: {
+				model=new VertexModel(rootPane,mnt.getMetrology());
+				break;
+			}
+			case ALCATEL: {
+				model=new AEMModel(rootPane,mnt.getMetrology());
+				break;
+			}
+			case MELCO: {
+				model=new Melco12mModel(rootPane,mnt.getMetrology());
+				break;
+			}
+			case MELCOA7M: {
+				model=new Melco7mModel(rootPane,mnt.getMetrology());
+				break;
+			}
+			}
+			setModel(model);
+			getTableHeader().setVisible(true);
+			model.fireTableStructureChanged();
+		} else {
+			EmptyModel eModel = new EmptyModel();
+			setModel(eModel);
+			getTableHeader().setVisible(false);
+			eModel.fireTableStructureChanged();
+		}
+	}
+
+	/**
+	 * Set the tab title setter in the model 
+	 * 
+	 * @param titleSetter The title setter
+	 * @param tabComponent The component
+	 * 
+	 * @see ErrorTabbedPane
+	 */
+	public void setTabTitleSetter(TabTitleSetter titleSetter, Component tabComponent) {
+		model.setTabTitleSetter(titleSetter, tabComponent);
+	}
+	
+	/**
+	 * Refresh the content of the table
+	 * 
+	 * @return The state (error or ok) of the table
+	 */
+	public ValueState refresh() {
+		if (model!=null) {
+			return model.refresh();
+		} else {
+			return ValueState.NORMAL;
+		}
+		
+	}
+}

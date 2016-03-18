@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount
+END
+VisibleConnectionStatus.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/VisibleConnectionStatus.java
+END
+HeartbeatChecker.java
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/HeartbeatChecker.java
+END
+ant.gif
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/ant.gif
+END
+stop.gif
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/stop.gif
+END
+StatusLine.java
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/StatusLine.java
+END
+AntennaRootPane.java
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/AntennaRootPane.java
+END

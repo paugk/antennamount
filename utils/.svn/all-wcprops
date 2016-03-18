@@ -1,0 +1,47 @@
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils
+END
+GUIConstants.java
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils/GUIConstants.java
+END
+DMSAngleConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils/DMSAngleConverter.java
+END
+ValueConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils/ValueConverter.java
+END
+HMSAngleConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils/HMSAngleConverter.java
+END
+ValueDisplayer.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils/ValueDisplayer.java
+END
+ValueState.java
+K 25
+svn:wc:ra_dav:version-url
+V 107
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils/ValueState.java
+END
+AngleConverter.java
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/utils/AngleConverter.java
+END

@@ -1,0 +1,488 @@
+/*
+ * ALMA - Atacama Large Millimiter Array (c) European Southern Observatory, 2007
+ * 
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ * 
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * 
+ */
+
+/** 
+ * @author  caproni   
+ * @version $Id: CommonCoordsTableModel.java 199134 2013-12-19 00:07:05Z rmarson $
+ * @since    
+ */
+
+package alma.control.gui.antennamount.coordtables;
+
+import alma.ControlGUIErrType.wrappers.AcsJMountGUIErrorEx;
+import alma.control.gui.antennamount.AntennaRootPane;
+import alma.control.gui.antennamount.errortab.ErrorInfo;
+import alma.control.gui.antennamount.mount.Mount;
+import alma.control.gui.antennamount.mount.MountController;
+import alma.control.gui.antennamount.mount.ValueHolder;
+import alma.control.gui.antennamount.utils.AngleConverter;
+import alma.control.gui.antennamount.utils.DMSAngleConverter;
+import alma.control.gui.antennamount.utils.HMSAngleConverter;
+import alma.control.gui.antennamount.utils.ValueDisplayer;
+
+import javax.swing.table.DefaultTableModel;
+
+/**
+ * 
+ * The table model for the coordinate table.
+ * It shows one row per each selected item in order to use the same
+ * class in different views
+ */
+public class CommonCoordsTableModel extends DefaultTableModel implements Runnable {
+	
+	/**
+	 * A class defining the value of each cell of the table.
+	 * 
+	 * Objects of this class contain a AngleConverter or a String.
+	 * If the angle is present, then it is returned for displaying,
+	 * otherwise the String is returned.
+	 * 
+	 * @author acaproni
+	 *
+	 */
+	private class CoordsCell {
+		// The angle
+		private AngleConverter angle=null;
+		
+		// The string
+		private String string=null;
+		
+		/**
+		 * Constructor
+		 * 
+		 * @param theAngle The AngleConverter to show in the table
+		 */
+		public CoordsCell(AngleConverter theAngle) {
+			if (theAngle==null) {
+				throw new IllegalArgumentException("Invalid null angle in constructor");
+			}
+			angle=theAngle;
+			string=null;
+		}
+		
+		/**
+		 * Constructor 
+		 * 
+		 * @param str The string to show in the table
+		 */
+		public CoordsCell(String str) {
+			if (str==null) {
+				throw new IllegalArgumentException("Invalid null string in constructor");
+			}
+			string=str;
+			angle=null;
+		}
+		
+		public String getValue() {
+			if (angle!=null) {
+				return angle.getString();
+			} else {
+				return string;
+			}
+		}
+		
+		/**
+		 * Set the string to return when the angle is null
+		 * 
+		 * @param str The not null not empty string
+		 */
+		public void setString(String str) {
+			if (str==null || str.length()==0) {
+				throw new IllegalArgumentException("The string can't be empty or null");
+			}
+		}
+	}
+	
+	/**
+	 * The positions of the fields read from the components
+	 * 
+	 * Changing the order of declaration of the fields, change the order
+	 * of the rows of the table
+	 * 
+	 * @author acaproni
+	 */
+	public enum CoordsRowPos {
+		HEADER,
+		ACTUAL,
+		COMMANDED,
+		DEVIATON,
+		EMPTY_LINE,
+		OFFSET_HEADER,
+		OFFSET,
+	}
+	
+	/**
+	 * The positions of the columns of the cells of the table.
+	 * 
+	 * Changing the order of declaration of the fields, change the order
+	 * of the r of the table
+	 * 
+	 * @author acaproni
+	 */
+	public enum CoordsColPos {
+		HEADER,
+		AZ,
+		EL,
+		RA,
+		DEC;
+	}
+	
+	// The content of the cells of the table
+	private CoordsCell[][] tableCells = 
+		new  CoordsCell[CoordsRowPos.values().length][CoordsColPos.values().length];
+	
+	/**
+	 * The time between 2 refreshes of the values in the table
+	 */
+	protected static final int REFRESH_TIME=1000;
+	
+	/**
+	 * The thread to refresh the values in the table
+	 */
+	private Thread thread;
+	// Signal the thread to terminate
+	private volatile boolean terminateThread=false;
+	
+	// The mount and the controller used to refresh the values in the table
+	protected Mount mount=null;
+	protected MountController controller=null;
+	
+	// The values of the Az/El/RA/Dec deviations
+	//
+	// Until the deviations will be available in the MountController/Mount component,
+	// they are calculated by subtracting the commanded to the actual positions
+	//
+	// The values are updated by the thread 
+	// @see CommonCoordsTableModel.run()
+	private ValueHolder<Double> azDeviation = new ValueHolder<Double>();
+	private ValueHolder<Double> elDeviation = new ValueHolder<Double>();
+	private ValueHolder<Double> raDeviation = new ValueHolder<Double>();
+	private ValueHolder<Double> decDeviation = new ValueHolder<Double>();
+	
+	/**
+	 * The AntennaRootPane
+	 */
+	private final AntennaRootPane rootP;
+	
+	/**
+	 * Constructor 
+	 * 
+	 * @param pane the AntennaRootPane
+	 */
+	public CommonCoordsTableModel(AntennaRootPane pane) {
+		super();
+		if (pane==null) {
+			throw new IllegalArgumentException("The AntennaRootPane can't be null");
+		}
+		this.rootP=pane;
+		initTableHeaders(null);
+		setupArrayOfVals();
+	}
+	
+	/**
+	 * Return the number of rows in the table
+	 * @see DefaultTableModel
+	 */
+	public int getRowCount() {
+		return CoordsRowPos.values().length;
+	}
+
+	/**
+	 * Return the number of columns in the table
+	 * @see DefaultTableModel
+	 */
+	public int getColumnCount() {
+		return CoordsColPos.values().length;
+	}
+
+	/**
+	 * All the cells contains String
+	 */
+	public Class<?> getColumnClass(int columnIndex) {
+		return String.class;
+	}
+	
+	public String getColumnName(int columnIndex) {
+		if (columnIndex<0 || columnIndex>CoordsColPos.values().length) {
+			throw new IllegalStateException("Asking the name of a col out of range!");
+		}
+		return tableCells[CoordsRowPos.HEADER.ordinal()][columnIndex].getValue();
+	}
+	
+	private void startThread() {
+		if (thread!=null && thread.isAlive()) {
+			// The thread is already running
+			return;
+		}
+		terminateThread=false;
+		thread = new Thread(this);
+		thread.setName("CommonCoordsTableModel");
+		thread.setDaemon(true);
+		rootP.getHeartbeatChecker().register(thread);
+		thread.start();
+	}
+	
+	private void stopThread(boolean sync) {
+		terminateThread=true;
+		while (sync && thread!=null && thread.isAlive()) {
+			try {
+				Thread.sleep(250);
+			} catch (InterruptedException ie) {}
+		}
+	}
+	
+	/**
+	 * Set the mount and the controller
+	 * 
+	 * @param ctrl The MountController
+	 *             If it's null its cells will display N/A
+	 * @param mnt The mount 
+	 */
+	public void setComponents(MountController ctrl,Mount mnt) {
+		controller=ctrl;
+		mount=mnt;
+		setupArrayOfVals();
+		if (controller!=null || mount!=null) {
+			startThread();
+		} else {
+			stopThread(false);
+		}
+	}
+	
+	/**
+	 * Set all the cells as not editable
+	 */
+	public boolean isCellEditable(int rowIndex, int columnIndex) {
+		return false;
+	}
+	
+	/**
+	 * Refreshes the values of the cells
+	 *
+	 */
+	public void run() {
+		while (!terminateThread) {
+			try {
+				Thread.sleep(CommonCoordsTableModel.REFRESH_TIME);
+			} catch (InterruptedException ie) {}
+			
+			try {
+				refresh();
+			} catch (Throwable t) {
+				AcsJMountGUIErrorEx ex = new AcsJMountGUIErrorEx(t);
+				ex.setContextDescription("Error refreshing the coordinates");
+				ErrorInfo ei = new ErrorInfo("CommonCoords error","Error refreshing the coordinates",ex);
+				rootP.addError(ei);
+			}
+			this.fireTableDataChanged();
+		}
+		mount=null;
+		controller=null;
+		rootP.getHeartbeatChecker().unregister(thread);
+		thread=null;
+	}
+	
+	/**
+	 * Refresh the values
+	 */
+	private void refresh() {
+		rootP.getHeartbeatChecker().ping(thread);
+		// Setup the deviation as difference between the actual and the
+		// commanded positions
+		if (mount!=null && controller.getActualAz()!=null && controller.getActualAz().getValue()!=null && 
+				controller.getCommandAz()!=null && controller.getCommandAz().getValue()!=null) {
+			azDeviation.setValue(
+					controller.getActualAz().getValue()-controller.getCommandAz().getValue());
+		} else {
+			azDeviation.setValue(null);
+		}
+		if (mount!=null && controller.getActualEl()!=null && controller.getActualEl().getValue()!=null && 
+				controller.getCommandEl()!=null && controller.getCommandEl().getValue()!=null) {
+			elDeviation.setValue(
+					controller.getActualEl().getValue()-controller.getCommandEl().getValue());
+		} else {
+			elDeviation.setValue(null);
+		}
+		if (controller!=null && controller.getActualRA()!=null && controller.getActualRA().getValue()!=null && 
+				controller.getCommandRA()!=null && controller.getCommandRA().getValue()!=null) {
+			raDeviation.setValue(
+					controller.getActualRA().getValue()-controller.getCommandRA().getValue());
+		} else {
+			raDeviation.setValue(null);
+		}
+		if (controller!=null && controller.getActualDec()!=null && controller.getActualDec().getValue()!=null && 
+				controller.getCommandDec()!=null && controller.getCommandDec().getValue()!=null) {
+			decDeviation.setValue(
+					controller.getActualDec().getValue()-controller.getCommandDec().getValue());
+		} else {
+			decDeviation.setValue(null);
+		}
+		
+		// Update RA/DEC header
+		if (controller!=null && controller.getEpoch()!=null) {
+			setRaDecHeader(controller.getEpoch().getValue());
+		} else {
+			setRaDecHeader(null);
+		}
+	}
+	
+	/**
+	 * Release the resources 
+	 *
+	 */
+	public void close() {
+		stopThread(true);
+		setupArrayOfVals();
+	}
+	
+	/**
+	 * Return the value (represented by a String) of a given cell
+	 */
+	public Object getValueAt(int rowIndex, int columnIndex) {
+		// Check if the table asks for a not defined value.
+		if (rowIndex>=CoordsRowPos.values().length || columnIndex>=CoordsColPos.values().length) {
+			String errorStr = "getValue("+rowIndex+","+columnIndex+") out of range: row in [0,"+CoordsRowPos.values().length;
+			errorStr+= "] col in [0,"+CoordsColPos.values().length+"]";
+			throw new IllegalStateException(errorStr);
+		}
+		return tableCells[rowIndex][columnIndex].getValue();
+	}
+	
+	/**
+	 * Setup the array vals to show in each cell
+	 * 
+	 */
+	private void setupArrayOfVals() {
+		// Commanded
+		if (mount!=null) {
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.AZ.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getCommandAz()));
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.EL.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getCommandEl()));
+		} else {
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.AZ.ordinal()]= new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.EL.ordinal()]= new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+		}
+		if (controller!=null) {
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.RA.ordinal()]= new CoordsCell(new HMSAngleConverter(controller.getCommandRA())); // hms 
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.DEC.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getCommandDec()));
+		} else {
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.RA.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.DEC.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+		}
+		
+		// Actual
+		if (mount!=null) {
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.AZ.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getActualAz()));
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.EL.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getActualEl()));
+		} else {
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.AZ.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.EL.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+		}
+		if (controller!=null) {
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.RA.ordinal()]= new CoordsCell(new HMSAngleConverter(controller.getActualRA())); // hms
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.DEC.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getActualDec()));
+		} else {
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.RA.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.DEC.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+		}
+		
+		// Deviation
+		if (mount!=null) {
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.AZ.ordinal()]= new CoordsCell(new DMSAngleConverter(azDeviation));
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.EL.ordinal()]= new CoordsCell(new DMSAngleConverter(elDeviation));
+		} else {
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.AZ.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.EL.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			
+		}
+		if (controller!=null) {
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.RA.ordinal()]= new CoordsCell(new HMSAngleConverter(raDeviation)); // hms
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.DEC.ordinal()]= new CoordsCell(new DMSAngleConverter(decDeviation));
+		} else {
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.RA.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.DEC.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+		}
+
+			// Offset
+		if (controller!=null) {
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.AZ.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getOffsetAz()));
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.EL.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getOffsetEl()));
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.RA.ordinal()]= new CoordsCell(new HMSAngleConverter(controller.getOffsetRA())); 
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.DEC.ordinal()]= new CoordsCell(new DMSAngleConverter(controller.getOffsetDec()));
+		} else {
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.AZ.ordinal()]= new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.EL.ordinal()]= new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.RA.ordinal()]= new CoordsCell(ValueDisplayer.NOT_AVAILABLE); 
+			tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.DEC.ordinal()]=new CoordsCell(ValueDisplayer.NOT_AVAILABLE);
+		}
+	}
+	
+	/**
+	 * Set the header of RA and DEC showing the epoch if it is not null
+	 * 
+	 * @param epoch The epoch to show close to RA and DEC
+	 * 
+	 * @param epoch
+	 */
+	private void setRaDecHeader(Double epoch) {
+		if (epoch==null) {
+			tableCells[CoordsRowPos.HEADER.ordinal()][CoordsColPos.RA.ordinal()] = new CoordsCell("<HTML><B>RA");
+			tableCells[CoordsRowPos.HEADER.ordinal()][CoordsColPos.DEC.ordinal()] = new CoordsCell("<HTML><B>Dec");
+			return;
+		}
+		String str = String.format("%4.1f", epoch.doubleValue());
+		tableCells[CoordsRowPos.HEADER.ordinal()][CoordsColPos.RA.ordinal()] = new CoordsCell("<HTML><B>RA ["+str+"]");
+		tableCells[CoordsRowPos.HEADER.ordinal()][CoordsColPos.DEC.ordinal()] = new CoordsCell("<HTML><B>Dec ["+str+"]");
+	}
+	
+	/**
+	 * Init the cells of the table with the titles or rows and cols
+	 * 
+	 * RA and DEC shows the epoch if it is not null
+	 * 
+	 * @param epoch The epoch to show close to RA and DEC
+	 */
+	private void initTableHeaders(Double epoch) {
+		String emptyStr="";
+		
+		// Table header
+		tableCells[CoordsRowPos.HEADER.ordinal()][CoordsColPos.HEADER.ordinal()] = new CoordsCell(emptyStr);
+		tableCells[CoordsRowPos.HEADER.ordinal()][CoordsColPos.AZ.ordinal()] = new CoordsCell("<HTML><B>Azimuth");
+		tableCells[CoordsRowPos.HEADER.ordinal()][CoordsColPos.EL.ordinal()] = new CoordsCell("<HTML><B>Elevation");
+		setRaDecHeader(epoch);
+		
+		// Left column
+		tableCells[CoordsRowPos.COMMANDED.ordinal()][CoordsColPos.HEADER.ordinal()] = new CoordsCell("<HTML><B>Commanded");
+		tableCells[CoordsRowPos.ACTUAL.ordinal()][CoordsColPos.HEADER.ordinal()] = new CoordsCell("<HTML><B>Actual");
+		tableCells[CoordsRowPos.DEVIATON.ordinal()][CoordsColPos.HEADER.ordinal()] = new CoordsCell("<HTML><B>Deviation");
+		tableCells[CoordsRowPos.OFFSET_HEADER.ordinal()][CoordsColPos.HEADER.ordinal()] = new CoordsCell(emptyStr);
+		tableCells[CoordsRowPos.OFFSET.ordinal()][CoordsColPos.HEADER.ordinal()] = new CoordsCell("<HTML><B>Offset");
+		
+		// The empty line
+		for (int t=0; t<CoordsColPos.values().length; t++) {
+			tableCells[CoordsRowPos.EMPTY_LINE.ordinal()][t] = new CoordsCell(emptyStr);
+		}
+		
+		// Offset header
+		tableCells[CoordsRowPos.OFFSET_HEADER.ordinal()][CoordsColPos.HEADER.ordinal()] = new CoordsCell(emptyStr);
+		tableCells[CoordsRowPos.OFFSET_HEADER.ordinal()][CoordsColPos.AZ.ordinal()] = new CoordsCell("<HTML><B>Horiz");
+		tableCells[CoordsRowPos.OFFSET_HEADER.ordinal()][CoordsColPos.EL.ordinal()] = new CoordsCell("<HTML><B>Vert");
+		tableCells[CoordsRowPos.OFFSET_HEADER.ordinal()][CoordsColPos.RA.ordinal()] = new CoordsCell(emptyStr);
+		tableCells[CoordsRowPos.OFFSET_HEADER.ordinal()][CoordsColPos.DEC.ordinal()] = new CoordsCell(emptyStr);
+	}
+}

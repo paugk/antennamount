@@ -1,0 +1,110 @@
+/*
+ * ALMA - Atacama Large Millimiter Array (c) European Southern Observatory, 2007
+ * 
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ * 
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * 
+ */
+
+/** 
+ * @author  caproni   
+ * @version $Id: MountConnectionListener.java 199134 2013-12-19 00:07:05Z rmarson $
+ * @since    
+ */
+
+package alma.control.gui.antennamount.mount;
+
+/**
+ * The interface for the listeners of events related to the responding
+ * of the mount components.
+ * It sends events depending on the quality of the communications with 
+ * the components.
+ * 
+ * The communication can be impossible, regular, slow, so unreliable that 
+ * the component can can be considered unreliable even if it is still running.
+ * 
+ * Most of these callbacks are executed after executing CORBA calls to a
+ * remote running component.
+ * There is also a callback executed if a component becomes unavailable 
+ * because it crashes or is unloaded by the container.
+ *
+ */
+public interface MountConnectionListener {
+	/**
+	 * The connection with the remote component
+	 * has been established
+	 * 
+	 * @param name The name identifying the component that established the 
+	 *      connection i.e. Mount or MountController, but it can be whatever
+	 *      with the only constraint to be the same used in connectionLost
+	 */
+	public void componentConnected(String name);
+	
+	/**
+	 * The component has been disconnected
+	 * <P>
+	 * This method tells that a component has been released by the panel.
+	 * 
+	 * @param name The name identifying the component that disconnected
+	 */
+	public void componentDisconnected(String name);
+	
+	/**
+	 * The component is responding in a very bad way and in fact it can be
+	 * considered totally unreliable. 
+	 * If this method is call it means that the component can be considered 
+	 * not responding even if is running.
+	 * 
+	 * @param name The name identifying the component that lost the connection
+	 *            i.e. Mount or MountController
+	 * @see MountConnectionListener.connectionEstablished
+	 *
+	 */
+	public void componentUnreliable(String name);
+	
+	/**
+	 * There is some problem communicating with the component.
+	 * Hopefully it is a transient problem and the situation will
+	 * be recovered soon.
+	 *
+	 */
+	public void componentTransientError();
+	
+	/**
+	 * The component is responding well but it is very slow.
+	 *
+	 */
+	public void componentResponseTimeSlow();
+	
+	/**
+	 * The response time of the component is ok
+	 * It is only sent if the component was slow and now its response time
+	 * is ok.
+	 *
+	 */
+	public void componentResponseTimeOk();
+	
+	/**
+	 * The components is down (it crashed or has been unloaded by the
+	 * container).
+	 * The CORBA reference to this object is not valid.
+	 * <P>
+	 * This method tells that a component is down but not in response
+	 * to a normal release by the panel.
+	 * 
+	 * @param name The name of the component (for example CONTROL/DV01/Mount)
+	 */
+	public void componentDown(String name);
+	
+}

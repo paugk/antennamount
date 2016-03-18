@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/chessboard/plugins
+END
+DartboardPluginHolder.java
+K 25
+svn:wc:ra_dav:version-url
+V 131
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/chessboard/plugins/DartboardPluginHolder.java
+END
+MountControlPluginHolder.java
+K 25
+svn:wc:ra_dav:version-url
+V 134
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/chessboard/plugins/MountControlPluginHolder.java
+END
+MountStatusPluginHolder.java
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/chessboard/plugins/MountStatusPluginHolder.java
+END
+PluginHolder.java
+K 25
+svn:wc:ra_dav:version-url
+V 122
+/p2/!svn/ver/209229/branches/2014-04-B/CONTROL/guis/src/alma/control/gui/antennamount/chessboard/plugins/PluginHolder.java
+END

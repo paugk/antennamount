@@ -1,0 +1,136 @@
+/*
+ * ALMA - Atacama Large Millimiter Array (c) European Southern Observatory, 2007
+ * 
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ * 
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * 
+ */
+
+/** 
+ * @author  acaproni   
+ * @version $Id$
+ * @since    
+ */
+
+package alma.control.gui.antennamount.utils.bit;
+
+import java.util.BitSet;
+
+/**
+ * 
+ * It is an helper to easily get the bit representation out of a long
+ * The long represented by the bit is immutable.
+ * The bit less significant is in position 0.
+ */
+public class LongBit {
+	/**
+	 * Bits representing the long number
+	 */
+	private BitSet bits=null;
+	
+	/**
+	 * The long whose bits are in bits
+	 */
+	private final Long value;
+	
+	/**
+	 * Constructor
+	 * 
+	 * @param num Builds the bit representation of the given long
+	 */
+	public LongBit(Long num) {
+		if (num==null) {
+			throw new IllegalArgumentException("Invalid null Long in constructor");
+		}
+		value=num;
+		bits=buildBitSet(value);
+	}
+	
+	/**
+	 * Build a bitset out of the bits of n
+	 * 
+	 * @param n The long whose bit must be in the BitSet
+	 * @return The BitSet with the bit of the given number
+	 */
+	private BitSet  buildBitSet(Long n) {
+		BitSet ret = new BitSet(Long.SIZE);
+		ret.clear();
+		long temp=1;
+		for (int t=0; t<Long.SIZE; t++) {
+			if ((n&temp)>0) {
+				ret.set(t);
+			} else {
+				ret.clear(t);
+			}
+			temp=temp << 1;
+		}
+		return ret;
+	}
+	
+	/**
+	 * Return the bit in the i position
+	 * 
+	 * @param i The position
+	 * @return true if the bit in position i is set
+	 */
+	public boolean getBit(int i) {
+		if (i<0 || i>=Long.SIZE) {
+			throw new IllegalArgumentException("Invalid position "+i);
+		}
+		return bits.get(i);
+	}
+	
+	/**
+	 * Getter 
+	 * 
+	 * @return The number whose bits are stored in the object
+	 */
+	public Long getValue() {
+		return value;
+	}
+	
+	/**
+	 * Getter
+	 * 
+	 * @return The BitSet for the number
+	 */
+	public BitSet getBits() {
+		return bits;
+	}
+	
+	/**
+	 * Print the bit of this of this long
+	 */
+	public String toString() {
+		StringBuilder ret = new StringBuilder();
+		for (int t=0; t<Long.SIZE; t++) {
+			if (t>0 && t%8==0) {
+				ret.append(' ');
+			}
+			if (t<Long.SIZE-bits.length()) {
+				ret.append('0');
+				continue;
+			}
+			if (bits.get(Long.SIZE-t-1)) {
+				ret.append('1');
+			} else {
+				ret.append('0');
+			}
+			
+		}
+		
+		return ret.toString();
+	}
+	
+}
