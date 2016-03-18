@@ -1,6 +1,6 @@
 # antennamount
 
-Cambios Realizados para levantar la interfaz grafica de Mount Panel
+Archivos modificados para levantar la interfaz grafica de Mount Panel para Mount Vertex LLama.
 
     * AntennaRootPane.java
     * ACSComponentsManager.java
