@@ -49,6 +49,7 @@ public class SubrefStatusTable extends JTable {
 
 		setModel(new CommonStatusModel());
 		
+		
 		setBackground(GUIConstants.tableBackgroundColor);
 		setRowSelectionAllowed(false);
         setColumnSelectionAllowed(false);
