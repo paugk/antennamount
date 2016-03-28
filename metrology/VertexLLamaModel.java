@@ -27,6 +27,7 @@ import alma.control.gui.antennamount.utils.ValueDisplayer;
 import alma.control.gui.antennamount.utils.ValueState;
 import alma.control.gui.antennamount.utils.bit.LongArrayBit;
 
+
 /**
  * The metrology model for the Vertex with vendor specific status bits
  * 
